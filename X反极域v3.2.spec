@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['X反极域v3.0.py'],
+    ['X反极域v3.2.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -12,7 +12,6 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
-    optimize=0,
 )
 pyz = PYZ(a.pure)
 
@@ -21,7 +20,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='X反极域v3.0',
+    name='X反极域v3.2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -41,5 +40,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='X反极域v3.0',
+    name='X反极域v3.2',
 )
