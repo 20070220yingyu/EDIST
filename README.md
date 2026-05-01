@@ -256,7 +256,7 @@ MAX_PASSWORD_ATTEMPTS = 2  # 最大密码尝试次数
 ## 👥 开发信息
 
 - **作者**: ying3477
-- **联系方式**: <nmmmyl@ying3477.xyz>
+- **联系方式**: <nmmmyl@ying.xyz>
 - **开发语言**: Python 3.x
 - **GUI框架**: Tkinter
 - **开源协议**: MIT License
