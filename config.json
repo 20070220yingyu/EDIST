@@ -1,0 +1,60 @@
+{
+    "app": {
+        "name": "EDIST",
+        "version": "3.3",
+        "author": "X团队",
+        "contact": "nmmmyl@ying.xyz"
+    },
+    "network": {
+        "default_port": 4705,
+        "ports_2016": 4705,
+        "ports_2022": 4988,
+        "http_port": 8080,
+        "http_ports_try": [
+            8080,
+            8000,
+            9000,
+            10000
+        ]
+    },
+    "security": {
+        "password": "3477355065",
+        "max_password_attempts": 2,
+        "admin_code": [
+            "Up",
+            "Up",
+            "Down",
+            "Down",
+            "Left",
+            "Right",
+            "Left",
+            "Right",
+            "b",
+            "a",
+            "b",
+            "a"
+        ],
+        "open_button_limit": {
+            "time_window": 60,
+            "max_clicks": 7,
+            "cooldown_time": 120
+        }
+    },
+    "ui": {
+        "window_size": [
+            600,
+            430
+        ],
+        "default_theme": "honeydew",
+        "font_family": "楷体",
+        "language": "zh_CN"
+    },
+    "features": {
+        "logging_enabled": true,
+        "log_file": "operation.log",
+        "auto_backup": true,
+        "auto_update": false,
+        "update_server_url": "https://347735.xyz/latest.php",
+        "check_on_startup": false
+    }
+}
