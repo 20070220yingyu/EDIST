@@ -289,7 +289,7 @@ EDIST v3.2 [管理员模式]
   },
   "features": {
     "auto_update": true,
-    "update_server_url": "https://347735.xyz/genxin/,
+    "update_server_url": "https://347735.xyz/latest.php,
     "logging_enabled": true,
     "auto_backup": true
   }
@@ -430,7 +430,7 @@ languages/
 
 ### 📍 **更新服务器配置**
 
-**当前地址**: `https://347735.xyz/genxin/`
+**当前地址**: `https://347735.xyz/latest.php`
 
 ### 📡 **检查方式**
 
@@ -663,27 +663,11 @@ if __name__ == '__main__':
 ### 👨‍💻 **如何贡献**
 
 1. **Fork 项目**
-   ```bash
-   git clone https://github.com/your-repo/EDIST.git
-   ```
-
 2. **创建分支**
-   ```bash
-   git checkout -b feature/YourFeature
-   ```
-
 3. **提交更改**
-   ```bash
-   git commit -m 'Add some feature'
-   ```
 
 4. **推送到分支**
-   ```bash
-   git push origin feature/YourFeature
-   ```
-
 5. **开启 Pull Request**
-
 ### 📋 **开发规范**
 
 - 遵循PEP 8 Python代码风格
@@ -739,10 +723,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ## 📞 联系方式
 
-- **邮箱**: nmmmyl@ying.xyz
-- ** Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- ** Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
-
+- **邮箱**: nmmmyl@ying3477.xyz
 ---
 
 <div align="center">
