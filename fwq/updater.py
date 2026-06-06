@@ -107,30 +107,41 @@ def backup_current_version(target_dir):
 def update_files(new_dir, target_dir):
     """
     将新版本文件复制/覆盖到目标目录
-    
+
     Args:
         new_dir: 新版本文件所在目录
         target_dir: 目标目录（需要被更新的目录）
-    
+
     Returns:
         bool: 是否成功
     """
     try:
         if not os.path.exists(new_dir):
             raise FileNotFoundError(f"新版本目录不存在: {new_dir}")
-        
+
         if not os.path.exists(target_dir):
             os.makedirs(target_dir, exist_ok=True)
             logger.info(f"创建目标目录: {target_dir}")
-        
+
+        items = os.listdir(new_dir)
+        if len(items) == 1:
+            single_item = os.path.join(new_dir, items[0])
+            if os.path.isdir(single_item):
+                logger.info(f"检测到单层目录包装 '{items[0]}'，使用内层目录作为源")
+                new_dir = single_item
+
         logger.info("开始更新文件...")
         updated_files = []
         skipped_files = []
-        
+
         for item in os.listdir(new_dir):
             src = os.path.join(new_dir, item)
             dst = os.path.join(target_dir, item)
-            
+
+            if os.path.basename(src).lower() == 'updater.exe':
+                logger.info(f"跳过 updater.exe 自身")
+                continue
+
             try:
                 if os.path.isdir(src):
                     if os.path.exists(dst):
@@ -140,31 +151,31 @@ def update_files(new_dir, target_dir):
                 else:
                     shutil.copy2(src, dst)
                     updated_files.append(f"[FILE] {item}")
-                    
+
             except PermissionError as e:
                 logger.warning(f"跳过 (权限不足): {item} - {e}")
                 skipped_files.append(item)
             except Exception as e:
                 logger.error(f"失败: {item} - {e}")
                 skipped_files.append(item)
-        
+
         logger.info(f"✓ 文件更新完成")
         logger.info(f"  成功: {len(updated_files)} 个项目")
-        
+
         if updated_files:
             logger.debug("更新的文件列表:")
-            for f in updated_files[:10]:  # 只显示前10个
+            for f in updated_files[:10]:
                 logger.debug(f"  + {f}")
             if len(updated_files) > 10:
                 logger.debug(f"  ... 还有 {len(updated_files) - 10} 个文件")
-        
+
         if skipped_files:
             logger.warning(f"  跳过: {len(skipped_files)} 个项目")
             for f in skipped_files:
                 logger.warning(f"  - {f}")
-        
+
         return len(skipped_files) == 0
-        
+
     except Exception as e:
         logger.error(f"更新文件失败: {e}")
         return False
