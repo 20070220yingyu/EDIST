@@ -81,5 +81,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='EDIST',
+    name='EDIST_v3.8',
 )

@@ -3,7 +3,7 @@
 功能:
 1. 打包主程序 EDIST.py → EDIST.exe (GUI模式)
 2. 打包更新器 fwq/updater.py → updater.exe (控制台模式)
-3. 将两者合并到 build/EDIST_v3.2/ 目录
+3. 将两者合并到 build/EDIST_v3.5/ 目录
 
 用法:
     python build_bundle.py
@@ -26,7 +26,7 @@ def run_command(cmd, description):
     print(f"\n[正在] {description}...")
     print(f"命令: {cmd}")
     
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     
     if result.returncode == 0:
         print(f"[完成] {description}")
@@ -43,12 +43,12 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     
-    print_header("EDIST v3.2 完整打包工具")
+    print_header("EDIST v3.8 完整打包工具")
     print(f"工作目录: {script_dir}")
     print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # 输出目录
-    output_dir = os.path.join(script_dir, 'build', 'EDIST_v3.2')
+    output_dir = os.path.join(script_dir, 'build', 'EDIST_v3.8')
     dist_dir = os.path.join(script_dir, 'dist')
     
     # Step 1: 清理旧的构建文件
@@ -171,7 +171,7 @@ def main():
     print("\n[OK] 打包成功！")
     print(f"位置: {output_dir}")
     print("\n使用方法:")
-    print("  1. 将整个 EDIST_v3.2 文件夹分发给用户")
+    print("  1. 将整个 EDIST_v3.8 文件夹分发给用户")
     print("  2. 用户运行 EDIST.exe 启动程序")
     print("  3. 自动更新时，updater.exe 会自动被调用")
     

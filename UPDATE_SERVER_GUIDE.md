@@ -2,7 +2,7 @@
 
 ## 📍 更新地址
 
-当前配置: `https://347735.xyz/latest.php`
+当前配置: `https://347735.xyz/genxin/`
 
 ---
 
@@ -14,7 +14,7 @@
 ```json
 {
     "version": "3.3",
-    "download": "https://347735.xyz/genxin/download/X反极域v3.3.zip",
+    "download": "https://347735.xyz/genxin/X反极域v3.3.zip",
     "changelog": "• 添加自动更新功能\n• 优化UI界面\n• 修复已知bug"
 }
 ```
@@ -23,7 +23,7 @@
 ```json
 {
     "tag_name": "v3.3",
-    "zipball_url": "https://347735.xyz/genxin/download/v3.3.zip",
+    "zipball_url": "https://347735.xyz/genxin/v3.3.zip",
     "body": "## v3.3 更新内容\n\n- 新功能1\n- 新功能2"
 }
 ```
@@ -62,7 +62,7 @@
 ```json
 {
     "version": "3.3.0",
-    "download": "https://347735.xyz/genxin/download/X反极域v3.3.0.zip",
+    "download": "https://347735.xyz/genxin/files/X反极域v3.3.0.zip",
     "changelog": "🎉 v3.3.0 重大更新\n\n✨ 新功能:\n• 自动更新系统\n• 多语言支持\n• 主题定制\n\n🐛 修复:\n• 修复UI布局问题\n• 优化性能\n\n⚠️ 注意:\n• 需要Python 3.x环境",
     "release_date": "2026-04-30",
     "min_version": "3.0",
@@ -77,7 +77,7 @@
     "download": "X反极域v3.3.zip"
 }
 ```
-> ⚠️ 相对路径会自动补全为: `https://347735.xyz/genxin/download/X反极域v3.3.zip`
+> ⚠️ 相对路径会自动补全为: `https://347735.xyz/genxin/X反极域v3.3.zip`
 
 ---
 

@@ -43,7 +43,7 @@ new_autoupdate_class = '''class AutoUpdateManager:
     def __init__(self):
         self.current_version = config.get('app.version', '3.2')
         # 更新服务器地址 - 使用 latest.php
-        self.update_api_url = config.get('features.update_server_url', 'https://347735.xyz/genxin/latest.php')
+        self.update_api_url = config.get('features.update_server_url', 'https://347735.xyz/latest.php')
         self.update_check_enabled = config.get('features.auto_update', True)
         
         print(f"[Update] 初始化完成")

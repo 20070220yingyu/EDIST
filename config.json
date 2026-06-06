@@ -1,7 +1,7 @@
 {
     "app": {
         "name": "EDIST",
-        "version": "3.3",
+        "version": "3.8",
         "author": "X团队",
         "contact": "nmmmyl@ying.xyz"
     },
@@ -15,7 +15,8 @@
             8000,
             9000,
             10000
-        ]
+        ],
+        "selected_ip": "192.168.10.138"
     },
     "security": {
         "password": "3477355065",
@@ -42,11 +43,11 @@
     },
     "ui": {
         "window_size": [
-            600,
-            430
+            780,
+            620
         ],
         "default_theme": "honeydew",
-        "font_family": "楷体",
+        "font_family": "宋体",
         "language": "zh_CN"
     },
     "features": {

